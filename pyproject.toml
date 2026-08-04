@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dda"
+version = "0.1.0"
+description = "Dependency Deprecation Agent — cited migration plans for deprecated, vulnerable, and EOL dependencies."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "streamlit",
+    "typer",
+    "httpx",
+    "tenacity",
+    "pydantic>=2",
+    "python-dotenv",
+    "qdrant-client",
+    "sentence-transformers",
+    "rank-bm25",
+    "langgraph",
+    "google-genai",
+    "groq",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "pre-commit",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dda"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "N"]
+
+# Ruff has no native rule for max lines per file (Pylint's C0302 "too-many-lines"
+# is not implemented in Ruff as of this writing). The 300-line file cap from
+# CLAUDE.md is enforced instead by the local `max-file-lines` hook in
+# .pre-commit-config.yaml.
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
