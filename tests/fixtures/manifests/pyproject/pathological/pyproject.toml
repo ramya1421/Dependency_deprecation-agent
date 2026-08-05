@@ -1,0 +1,17 @@
+[project]
+name = "example"
+version = "0.1.0"
+dependencies = [
+    "flask>=2.0",
+    "requests[socks]==2.31.0",
+    "vcs-pkg @ git+https://github.com/example/vcs-pkg.git",
+    "local-pkg @ file:///opt/local-pkg",
+    "conditional-pkg==1.0.0; sys_platform == \"win32\"",
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = "^2.0"
+some-git-pkg = {git = "https://github.com/example/git-pkg.git"}
+vendored-pkg = {path = "../vendored-pkg"}
+requests = {version = "^2.28", extras = ["socks"]}

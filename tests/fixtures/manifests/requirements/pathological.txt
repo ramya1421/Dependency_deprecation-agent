@@ -1,0 +1,19 @@
+# top-level comment describing this file
+
+-r base-requirements.txt
+--requirement other-requirements.txt
+-e ./local-editable-package
+--editable ./another-editable
+git+https://github.com/example/vcs-pkg.git@main#egg=vcs-pkg
+hg+https://bitbucket.org/example/hg-pkg#egg=hg-pkg
+./vendor/local-pkg
+../sibling-pkg
+file:///opt/local-pkg
+--index-url https://pypi.example.com/simple
+--extra-index-url https://pypi.example.com/simple
+-i https://pypi.example.com/simple
+flask==2.3.0; python_version >= "3.8"
+django==4.2.0 --hash=sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef12345678
+this-is-not-!!valid==requirement==syntax
+numpy>=1.24.0
+requests[socks]==2.31.0

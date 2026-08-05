@@ -1,0 +1,16 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.0",
+    "@scope/pkg": "^1.2.3",
+    "local-pkg": "file:../local-pkg",
+    "linked-pkg": "link:../linked-pkg",
+    "ssh-pkg": "git+ssh://git@github.com/example/ssh-pkg.git",
+    "workspace-pkg": "workspace:*"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "another-git": "git+https://github.com/example/another-git.git"
+  }
+}

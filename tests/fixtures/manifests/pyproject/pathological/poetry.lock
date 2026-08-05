@@ -1,0 +1,11 @@
+[[package]]
+name = "flask"
+version = "2.3.0"
+description = "A simple framework"
+category = "main"
+
+[[package]]
+name = "pytest"
+version = "7.4.0"
+description = "Testing framework"
+category = "dev"
