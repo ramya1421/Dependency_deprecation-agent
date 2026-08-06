@@ -28,6 +28,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-asyncio",
+    "respx",
     "ruff",
     "mypy",
     "pre-commit",
@@ -56,3 +58,4 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+asyncio_mode = "auto"
