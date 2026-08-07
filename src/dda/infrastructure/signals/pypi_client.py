@@ -3,8 +3,13 @@ from typing import Any
 
 from dda.domain.entities import Dependency, Signal
 from dda.domain.ports import ISignalSource
-from dda.domain.value_objects import Severity, SignalType
+from dda.domain.value_objects import Ecosystem, Severity, SignalType
 from dda.infrastructure.http.base_client import BaseHttpClient
+from dda.infrastructure.signals._offline import empty_on_offline_miss
+from dda.infrastructure.signals._versions import (
+    major_versions_behind,
+    severity_for_major_versions_behind,
+)
 
 _INACTIVE_CLASSIFIER = "Development Status :: 7 - Inactive"
 
@@ -21,7 +26,10 @@ class PyPIClient(ISignalSource):
     def source_name(self) -> str:
         return "pypi"
 
+    @empty_on_offline_miss
     async def fetch(self, dependency: Dependency) -> list[Signal]:
+        if dependency.ecosystem is not Ecosystem.PYTHON:
+            return []
         data = await self._http_client.request(
             "GET",
             f"https://pypi.org/pypi/{dependency.name}/json",
@@ -66,6 +74,22 @@ class PyPIClient(ISignalSource):
                     payload={
                         "reason": "inactive_classifier",
                         "last_upload_date": last_upload_date,
+                    },
+                    fetched_at=fetched_at,
+                )
+            )
+
+        behind = major_versions_behind(dependency.resolved_version, info.get("version"))
+        if behind is not None:
+            signals.append(
+                Signal(
+                    source=self.source_name,
+                    signal_type=SignalType.OUTDATED,
+                    severity=severity_for_major_versions_behind(behind),
+                    payload={
+                        "resolved_version": dependency.resolved_version,
+                        "latest_version": info.get("version"),
+                        "major_versions_behind": behind,
                     },
                     fetched_at=fetched_at,
                 )

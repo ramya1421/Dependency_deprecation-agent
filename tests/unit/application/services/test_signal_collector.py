@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+from dda.application.services.signal_collector import SignalCollector
 from dda.domain.entities import Dependency, Signal
 from dda.domain.ports import ISignalSource
 from dda.domain.value_objects import Ecosystem, Severity, SignalType
-from dda.infrastructure.signals.collector import SignalCollector
 
 
 class _FakeSource(ISignalSource):

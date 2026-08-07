@@ -5,6 +5,7 @@ from dda.domain.entities import Dependency, Signal
 from dda.domain.ports import ISignalSource
 from dda.domain.value_objects import Ecosystem, Severity, SignalType
 from dda.infrastructure.http.base_client import BaseHttpClient
+from dda.infrastructure.signals._offline import empty_on_offline_miss
 
 _OSV_ECOSYSTEM = {
     Ecosystem.PYTHON: "PyPI",
@@ -46,6 +47,7 @@ class OsvClient(ISignalSource):
     def source_name(self) -> str:
         return "osv"
 
+    @empty_on_offline_miss
     async def fetch(self, dependency: Dependency) -> list[Signal]:
         osv_ecosystem = _OSV_ECOSYSTEM.get(dependency.ecosystem)
         if osv_ecosystem is None:

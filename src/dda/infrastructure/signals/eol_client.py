@@ -7,6 +7,7 @@ from dda.domain.entities import Dependency, Signal
 from dda.domain.ports import ISignalSource
 from dda.domain.value_objects import Severity, SignalType
 from dda.infrastructure.http.base_client import BaseHttpClient
+from dda.infrastructure.signals._offline import empty_on_offline_miss
 
 _NEAR_TERM_DAYS = 365
 
@@ -24,6 +25,7 @@ class EolClient(ISignalSource):
     def source_name(self) -> str:
         return "eol"
 
+    @empty_on_offline_miss
     async def fetch(self, dependency: Dependency) -> list[Signal]:
         try:
             data = await self._http_client.request(

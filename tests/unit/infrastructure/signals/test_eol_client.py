@@ -31,6 +31,15 @@ def test_source_name_is_eol(connection: sqlite3.Connection) -> None:
     assert EolClient(_http_client(connection)).source_name == "eol"
 
 
+async def test_offline_cache_miss_returns_empty_list(connection: sqlite3.Connection) -> None:
+    offline_client = BaseHttpClient(connection, correlation_id="test", offline=True)
+    client = EolClient(offline_client)
+
+    signals = await client.fetch(_dependency())
+
+    assert signals == []
+
+
 @respx.mock
 async def test_unknown_product_returns_no_signals_not_an_error(
     connection: sqlite3.Connection,

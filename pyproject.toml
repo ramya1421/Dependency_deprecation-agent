@@ -13,9 +13,11 @@ dependencies = [
     "uvicorn[standard]",
     "streamlit",
     "typer",
+    "rich",
     "httpx",
     "tenacity",
     "pydantic>=2",
+    "pydantic-settings",
     "python-dotenv",
     "qdrant-client",
     "sentence-transformers",
@@ -24,6 +26,9 @@ dependencies = [
     "google-genai",
     "groq",
 ]
+
+[project.scripts]
+dda = "dda.cli.main:main"
 
 [project.optional-dependencies]
 dev = [

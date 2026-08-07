@@ -52,6 +52,15 @@ def test_source_name_is_github(connection: sqlite3.Connection) -> None:
     assert GitHubClient(_http_client(connection)).source_name == "github"
 
 
+async def test_offline_cache_miss_returns_empty_list(connection: sqlite3.Connection) -> None:
+    offline_client = BaseHttpClient(connection, correlation_id="test", offline=True)
+    client = GitHubClient(offline_client)
+
+    signals = await client.fetch(_dependency())
+
+    assert signals == []
+
+
 @respx.mock
 async def test_unresolvable_name_skips_network_entirely(connection: sqlite3.Connection) -> None:
     client = GitHubClient(_http_client(connection))

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from dda.domain.entities import Dependency
 from dda.domain.ports import IManifestParser
 from dda.domain.value_objects import Ecosystem
 
@@ -18,3 +19,10 @@ class ParserRegistry:
             if manifests:
                 detected[parser.ecosystem] = manifests
         return detected
+
+    def parse_all(self, repo_root: Path) -> list[Dependency]:
+        dependencies: list[Dependency] = []
+        for parser in self._parsers:
+            for manifest in parser.detect(repo_root):
+                dependencies.extend(parser.parse(manifest))
+        return dependencies
