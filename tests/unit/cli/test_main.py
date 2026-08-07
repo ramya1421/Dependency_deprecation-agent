@@ -52,3 +52,24 @@ def test_show_after_scan_displays_the_same_findings(tmp_path: Path) -> None:
 
     assert show_result.exit_code == 0
     assert "flask" in show_result.stdout
+
+
+def test_usage_lists_call_sites_with_file_line_and_confidence(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("import flask\nflask.Flask(__name__)\n")
+
+    result = runner.invoke(app, ["usage", str(tmp_path), "--package", "flask"])
+
+    assert result.exit_code == 0
+    assert "app.py:2" in result.stdout
+    assert "flask.Flask" in result.stdout
+    assert "static_confirmed" in result.stdout
+    assert "lower bound" in result.stdout
+
+
+def test_usage_with_no_matches_reports_zero_call_sites(tmp_path: Path) -> None:
+    (tmp_path / "app.py").write_text("import os\nos.getcwd()\n")
+
+    result = runner.invoke(app, ["usage", str(tmp_path), "--package", "flask"])
+
+    assert result.exit_code == 0
+    assert "0 confirmed, 0 possible" in result.stdout

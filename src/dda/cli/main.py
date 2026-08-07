@@ -13,8 +13,11 @@ from dda.application.services.risk_scoring_service import RiskScoringService
 from dda.application.services.signal_collector import SignalCollector
 from dda.application.use_cases.scan_repository import ScanRepositoryUseCase
 from dda.config.settings import Settings
-from dda.domain.entities import Finding
-from dda.domain.ports import ISignalSource
+from dda.domain.entities import Finding, UsageSite
+from dda.domain.ports import ISignalSource, IUsageAnalyzer
+from dda.domain.value_objects import Confidence
+from dda.infrastructure.analyzers.python_ast_analyzer import PythonAstAnalyzer
+from dda.infrastructure.analyzers.tree_sitter_js_analyzer import TreeSitterJsAnalyzer
 from dda.infrastructure.http.base_client import BaseHttpClient
 from dda.infrastructure.parsers.npm_parser import NpmManifestParser
 from dda.infrastructure.parsers.parse_result import ParseResult
@@ -145,6 +148,44 @@ def show(scan_id: str = typer.Argument(..., help="Scan id to display")) -> None:
         console.print(f"[red]No findings for scan {scan_id}[/red]")
         raise typer.Exit(code=1)
     _print_findings_table(scan_id, findings)
+
+
+@app.command()
+def usage(
+    repo_path: str = typer.Argument(..., help="Local repo path to analyze"),
+    package: str = typer.Option(..., "--package", help="Package name to find usage of"),
+) -> None:
+    """List every call site for a package's API, with file:line and confidence tier."""
+    repo_root = Path(repo_path)
+    analyzers: list[IUsageAnalyzer] = [PythonAstAnalyzer(), TreeSitterJsAnalyzer()]
+    usage_sites: list[UsageSite] = []
+    for analyzer in analyzers:
+        usage_sites.extend(analyzer.analyze(repo_root, [package]))
+
+    matching = sorted(
+        (s for s in usage_sites if s.package.lower() == package.lower()),
+        key=lambda s: (str(s.file_path), s.line_number),
+    )
+
+    table = Table(title=f"Usage of {package} in {repo_path}")
+    table.add_column("File:Line")
+    table.add_column("Symbol")
+    table.add_column("Kind")
+    table.add_column("Confidence")
+    for site in matching:
+        location = f"{site.file_path.relative_to(repo_root)}:{site.line_number}"
+        table.add_row(location, site.symbol, site.usage_kind, site.confidence.value)
+    console.print(table)
+
+    # Never collapse the two confidence tiers into one blended number: static
+    # analysis is a lower bound, not an exhaustive count (dynamic imports,
+    # re-exports, and monkey-patching all defeat it).
+    confirmed = sum(1 for s in matching if s.confidence is Confidence.STATIC_CONFIRMED)
+    possible = len(matching) - confirmed
+    console.print(
+        f"[dim]{confirmed} confirmed, {possible} possible call site(s) — "
+        "a lower bound, not exhaustive.[/dim]"
+    )
 
 
 def main() -> None:

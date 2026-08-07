@@ -25,6 +25,9 @@ dependencies = [
     "langgraph",
     "google-genai",
     "groq",
+    "pathspec",
+    "tree-sitter",
+    "tree-sitter-javascript",
 ]
 
 [project.scripts]
