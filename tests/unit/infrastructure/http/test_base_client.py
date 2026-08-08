@@ -37,6 +37,42 @@ async def test_request_returns_parsed_json(connection: sqlite3.Connection) -> No
 
 
 @respx.mock
+async def test_parse_json_false_returns_raw_text(connection: sqlite3.Connection) -> None:
+    respx.get("https://example.test/raw.md").mock(
+        return_value=httpx.Response(200, text="# Changelog\n\nnot json\n")
+    )
+    client = _client(connection)
+
+    result = await client.request(
+        "GET", "https://example.test/raw.md", "example", parse_json=False
+    )
+
+    assert result == "# Changelog\n\nnot json\n"
+    await client.aclose()
+
+
+@respx.mock
+async def test_parse_json_false_cache_hit_also_returns_raw_text(
+    connection: sqlite3.Connection,
+) -> None:
+    route = respx.get("https://example.test/raw.md").mock(
+        return_value=httpx.Response(200, text="raw content")
+    )
+    client = _client(connection)
+
+    first = await client.request(
+        "GET", "https://example.test/raw.md", "example", parse_json=False
+    )
+    second = await client.request(
+        "GET", "https://example.test/raw.md", "example", parse_json=False
+    )
+
+    assert first == second == "raw content"
+    assert route.call_count == 1
+    await client.aclose()
+
+
+@respx.mock
 async def test_retries_on_429_then_succeeds(connection: sqlite3.Connection) -> None:
     route = respx.get("https://example.test/flaky").mock(
         side_effect=[httpx.Response(429), httpx.Response(200, json={"ok": True})]

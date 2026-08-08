@@ -15,6 +15,7 @@ venv/
 
 # Data
 *.db
+/data/
 
 # Tooling caches
 .mypy_cache/

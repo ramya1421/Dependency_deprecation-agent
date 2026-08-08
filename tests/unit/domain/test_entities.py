@@ -81,6 +81,7 @@ def test_chunk_and_claim_construction() -> None:
         source_url="https://example.com/CHANGELOG.md",
         header_path="3.0.0",
         version="3.0.0",
+        token_count=12,
     )
     claim = Claim(
         text="`escape` was removed in 3.0.0.",

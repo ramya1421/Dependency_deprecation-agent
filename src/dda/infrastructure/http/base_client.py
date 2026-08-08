@@ -57,9 +57,12 @@ class BaseHttpClient:
         params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
         ttl_seconds: int = 3600,
+        parse_json: bool = True,
     ) -> Any:
         # JSON APIs here return either an object or a top-level array (e.g.
         # endoflife.date), so the parsed payload is `Any`, not `dict[str, Any]`.
+        # `parse_json=False` is for plain-text endpoints (e.g. raw file
+        # content) that were never JSON to begin with.
         body_str = json.dumps(json_body, sort_keys=True) if json_body is not None else ""
         # `params` is folded into the cache key too: two GETs to the same path
         # with different query params (e.g. GitHub's issue search) must not collide.
@@ -69,7 +72,7 @@ class BaseHttpClient:
         cached = self._cache.get(cache_key)
         if cached is not None:
             self._log(source, method, url, cache_hit=True, status_code=cached.status_code)
-            return json.loads(cached.body)
+            return json.loads(cached.body) if parse_json else cached.body
 
         if self._offline:
             raise OfflineCacheMissError(url)
@@ -91,7 +94,7 @@ class BaseHttpClient:
 
         self._cache.put(cache_key, response.text, response.status_code, ttl_seconds)
         self._log(source, method, url, cache_hit=False, status_code=response.status_code)
-        return response.json()
+        return response.json() if parse_json else response.text
 
     async def _send_with_retry(
         self,

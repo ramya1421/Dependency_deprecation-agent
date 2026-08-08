@@ -28,6 +28,7 @@ dependencies = [
     "pathspec",
     "tree-sitter",
     "tree-sitter-javascript",
+    "transformers",
 ]
 
 [project.scripts]
@@ -58,8 +59,16 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N"]
 # CLAUDE.md is enforced instead by the local `max-file-lines` hook in
 # .pre-commit-config.yaml.
 
+# mypy's python_version governs which syntax mypy accepts — it does not
+# relax requires-python above, which stays the real runtime floor. Forced up
+# from 3.11 to 3.12 because numpy>=2.5's bundled .pyi stubs (pulled in
+# transitively now that tokenizer.py imports `transformers`) use PEP 695
+# `type` statements that mypy cannot even parse below 3.12 — this is a
+# stub-parsing limitation in a dependency, not a check on our own code, and
+# `follow_imports = "skip"` does not avoid it (mypy still parses the
+# top-level stub before an override can apply).
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 

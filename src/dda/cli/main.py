@@ -12,6 +12,7 @@ from dda.application.services.parser_registry import ParserRegistry
 from dda.application.services.risk_scoring_service import RiskScoringService
 from dda.application.services.signal_collector import SignalCollector
 from dda.application.use_cases.scan_repository import ScanRepositoryUseCase
+from dda.cli.kb import kb_app
 from dda.config.settings import Settings
 from dda.domain.entities import Finding, UsageSite
 from dda.domain.ports import ISignalSource, IUsageAnalyzer
@@ -33,6 +34,7 @@ from dda.infrastructure.signals.pypi_client import PyPIClient
 from dda.infrastructure.vcs.git_repo_fetcher import GitRepoFetcher
 
 app = typer.Typer(help="Dependency Deprecation Agent")
+app.add_typer(kb_app, name="kb")
 console = Console()
 
 

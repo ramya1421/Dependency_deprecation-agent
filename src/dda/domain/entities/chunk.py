@@ -10,3 +10,4 @@ class Chunk:
     source_url: str
     header_path: str
     version: str | None
+    token_count: int
