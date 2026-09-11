@@ -12,7 +12,7 @@ def health() -> HealthResponse:
     than 5xx so load balancers can distinguish config errors from crashes.
     """
     settings = get_settings()
-    qdrant_status = _check_qdrant(settings.qdrant_url)
+    qdrant_status = _check_qdrant(settings.qdrant_url, settings.qdrant_api_key)
     llm_status = _check_llm(settings.gemini_api_key, settings.groq_api_key)
     overall = "ok" if qdrant_status == "ok" and llm_status == "ok" else "degraded"
     return HealthResponse(
@@ -22,12 +22,13 @@ def health() -> HealthResponse:
     )
 
 
-def _check_qdrant(url: str | None) -> str:
+def _check_qdrant(url: str | None, api_key: str | None = None) -> str:
     if not url:
         return "not_configured"
     try:
         from qdrant_client import QdrantClient
-        QdrantClient(url=url).get_collections()
+        # api_key must be passed — Qdrant Cloud returns 403 without it.
+        QdrantClient(url=url, api_key=api_key).get_collections()
         return "ok"
     except Exception as exc:
         return f"error: {exc}"
