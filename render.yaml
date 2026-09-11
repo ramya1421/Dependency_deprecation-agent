@@ -28,10 +28,7 @@ services:
         sync: false
       - key: GITHUB_TOKEN
         sync: false
-    disk:
-      name: dda-db
-      mountPath: /app/db
-      sizeGB: 1
+    
 
   - type: web
     name: dda-ui
