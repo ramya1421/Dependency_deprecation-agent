@@ -63,4 +63,5 @@ ENV HF_HOME=/home/dda/.cache/huggingface
 EXPOSE 8000
 
 # Default: run the FastAPI backend. Override CMD for Streamlit or CLI.
-CMD ["uvicorn", "dda.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# PORT is set by Render; default 8000 for docker-compose and local runs.
+CMD ["sh", "-c", "uvicorn dda.api.app:app --host 0.0.0.0 --port ${PORT:-8000}"]

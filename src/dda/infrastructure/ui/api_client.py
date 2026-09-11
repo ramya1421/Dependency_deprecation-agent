@@ -2,11 +2,19 @@
 
 All pages import from here — no page imports httpx directly.
 """
+import os
 from typing import Any
 
 import httpx
 
-_BASE = "http://localhost:8000"
+def _api_base() -> str:
+    raw = os.environ.get("DDA_API_URL", "http://localhost:8000").strip().rstrip("/")
+    if raw and not raw.startswith(("http://", "https://")):
+        return f"https://{raw}"
+    return raw
+
+
+_BASE = _api_base()
 _TIMEOUT = 30.0
 
 

@@ -1,0 +1,61 @@
+# Render Blueprint — deploy with: Dashboard → New → Blueprint → connect repo
+#
+# Requires these secrets in Render (set in Dashboard or via sync: false vars):
+#   GEMINI_API_KEY, GROQ_API_KEY, QDRANT_URL, QDRANT_API_KEY
+# Optional: GITHUB_TOKEN (raises GitHub API rate limit)
+
+services:
+  - type: web
+    name: dda-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_PATH
+        value: /app/db/dda.db
+      - key: LOG_LEVEL
+        value: INFO
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+    disk:
+      name: dda-db
+      mountPath: /app/db
+      sizeGB: 1
+
+  - type: web
+    name: dda-ui
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    dockerCommand: >
+      streamlit run src/dda/infrastructure/ui.py
+      --server.port=$PORT
+      --server.address=0.0.0.0
+      --server.headless=true
+    envVars:
+      - key: DDA_API_URL
+        fromService:
+          type: web
+          name: dda-api
+          property: host
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
