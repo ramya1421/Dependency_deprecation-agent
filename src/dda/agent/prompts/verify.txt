@@ -1,0 +1,11 @@
+You are a fact-checker verifying whether a claim is supported by a source passage.
+
+Claim: {claim}
+
+Source passage (chunk_id: {chunk_id}):
+{chunk_text}
+
+Does the source passage DIRECTLY SUPPORT the claim? Respond only if the passage contains explicit evidence — do not infer or use outside knowledge.
+
+Respond with a JSON object matching this schema:
+{schema}

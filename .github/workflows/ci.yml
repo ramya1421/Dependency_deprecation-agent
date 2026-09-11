@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+# Cancel in-progress runs on the same branch so a fast push doesn't queue up
+# a backlog of redundant runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Cache pip downloads separately from the venv so the install layer
+      # is still reused when only a transitive dep changes its wheel hash.
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check .
+
+      - name: ruff format --check
+        run: ruff format --check .
+
+      - name: mypy
+        run: mypy src
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    # HuggingFace model weights are cached between runs so the tokenizer
+    # (used by the chunker's token-count step) doesn't re-download each time.
+    env:
+      HF_HOME: /home/runner/.cache/huggingface
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      # Cache the bge-small tokenizer so chunker tests don't download 90 MB
+      # on every run. The key includes the model name so a model upgrade
+      # automatically busts it.
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/huggingface
+          key: hf-BAAI-bge-small-en-v1.5-${{ runner.os }}
+          restore-keys: hf-BAAI-bge-small-en-v1.5-
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run unit + integration tests
+        run: |
+          pytest tests/unit/ tests/integration/ \
+            --tb=short \
+            -q \
+            --cov=src/dda \
+            --cov-report=term-missing \
+            --cov-fail-under=40
+        env:
+          # No API keys needed — all tests run offline with fakes/mocks.
+          GEMINI_API_KEY: ""
+          GROQ_API_KEY: ""
+          QDRANT_URL: ""
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    # Only run on push to main or PRs targeting main — the build takes ~5 min
+    # due to model pre-baking and doesn't need to run on every feature branch.
+    if: >
+      github.event_name == 'push' && github.ref == 'refs/heads/main' ||
+      github.event_name == 'pull_request' && github.base_ref == 'main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # BuildKit cache mounts speed up repeated pip installs inside the image.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (runtime target only)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: runtime
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: dda:ci

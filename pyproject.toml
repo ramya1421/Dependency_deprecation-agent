@@ -56,7 +56,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N"]
 
 # Ruff has no native rule for max lines per file (Pylint's C0302 "too-many-lines"
 # is not implemented in Ruff as of this writing). The 300-line file cap from
-# CLAUDE.md is enforced instead by the local `max-file-lines` hook in
+# DEVELOPMENT.md is enforced instead by the local `max-file-lines` hook in
 # .pre-commit-config.yaml.
 
 # mypy's python_version governs which syntax mypy accepts — it does not
@@ -73,6 +73,6 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "evals"]
 addopts = "-ra --strict-markers"
 asyncio_mode = "auto"

@@ -1,4 +1,4 @@
-"""Fail if any given file exceeds CLAUDE.md's 300-line cap.
+"""Fail if any given file exceeds the 300-line cap defined in DEVELOPMENT.md.
 
 Ruff has no native rule for this (Pylint's C0302 "too-many-lines" is not
 implemented in Ruff), so it's enforced here as a pre-commit hook instead.

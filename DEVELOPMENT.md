@@ -1,4 +1,4 @@
-# CLAUDE.md
+# DEVELOPMENT.md
 
 ## Project
 Dependency Deprecation Agent (DDA). Scans a Git repo's dependency manifests,
@@ -39,18 +39,15 @@ AgentExecutor (LangGraph gives inspectable state), Postgres, React (V2).
 - Every external call goes through a port interface so it can be faked in tests.
 
 ## Scope Discipline
-This is a 14-day solo build. When I ask for a feature, implement the simplest
+This is a 14-day solo build. When implementing a feature, implement the simplest
 version that satisfies the requirement. Do not add caching, abstraction layers,
-config options, or extensibility hooks I did not ask for. If you think
-something is missing, say so in one sentence and let me decide — do not build
-it preemptively.
+config options, or extensibility hooks that were not asked for.
 
 ## Working Style
-- Before writing code, state your plan in 3-5 bullets and wait if the task is
-  ambiguous.
+- Before writing code, state the plan in 3-5 bullets.
 - Write the test alongside the implementation, not after.
-- When you make a non-obvious design choice, add a one-line comment explaining
+- When making a non-obvious design choice, add a one-line comment explaining
   WHY, not what.
-- Never write placeholder code, TODO stubs, or mock implementations unless I
-  explicitly ask. If you cannot implement something, say so.
-- Do not create files I did not ask for. No extra READMEs, no example scripts.
+- Never write placeholder code or TODO stubs. If something cannot be implemented
+  now, say so.
+- Do not create files that were not asked for.

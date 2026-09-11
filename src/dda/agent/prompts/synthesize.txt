@@ -1,0 +1,24 @@
+You are a dependency migration expert. Generate a concrete migration plan for the package below.
+
+Package: {package}
+Ecosystem: {ecosystem}
+
+Usage sites in this codebase:
+{usage_sites}
+
+Retrieved migration context (cite each claim with [chunk_id]):
+{context}
+
+Structured facts:
+{structured_facts}
+
+Write a migration plan with:
+1. A 2-3 sentence summary of what needs to change and why.
+2. Numbered migration steps, each referencing specific files or symbols from the usage sites above.
+3. Every factual claim MUST be followed by [chunk_id] citing the source chunk. If you cannot cite a claim, do not make it.
+4. If the context does not contain enough information to answer a question, say "Insufficient information in retrieved context" — do NOT infer or hallucinate.
+
+Effort estimate: based on {total_call_sites} call site(s) across {distinct_files} file(s).
+
+Respond with a JSON object matching this schema:
+{schema}

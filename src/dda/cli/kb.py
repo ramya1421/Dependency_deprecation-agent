@@ -1,8 +1,10 @@
 import asyncio
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from dda.config.settings import Settings
@@ -10,9 +12,10 @@ from dda.domain.entities import Chunk
 from dda.infrastructure.http.base_client import BaseHttpClient
 from dda.infrastructure.persistence.connection import connect
 from dda.infrastructure.persistence.migration_runner import MigrationRunner
+from dda.infrastructure.rag.bm25_retriever import BM25Retriever
 from dda.infrastructure.rag.chunk_store import ChunkStore
 from dda.infrastructure.rag.chunker import MarkdownChunker
-from dda.infrastructure.rag.kb_builder_service import KbBuilderService, KbBuildResult
+from dda.infrastructure.rag.kb_builder_service import KbBuildResult, KbBuilderService
 from dda.infrastructure.rag.kb_fetcher import KbFetcher
 from dda.infrastructure.rag.repo_resolver import RepoResolver
 
@@ -85,3 +88,81 @@ def _package_row(chunks: list[Chunk]) -> tuple[str, str, str]:
     mean_tokens = round(sum(token_counts) / len(token_counts))
     token_summary = f"{min(token_counts)}/{mean_tokens}/{max(token_counts)}"
     return str(documents), str(len(chunks)), token_summary
+
+
+@kb_app.command("ingest")
+def ingest(
+    packages: str = typer.Option(..., "--packages", help="Comma-separated package names"),
+) -> None:
+    """Embed chunks and upsert into Qdrant. Requires QDRANT_URL in .env."""
+    settings = Settings()
+    if not settings.qdrant_url:
+        console.print("[red]QDRANT_URL is not set — cannot ingest.[/red]")
+        raise typer.Exit(code=1)
+
+    # Import here to avoid loading heavy ML deps unless this command is called.
+    from dda.infrastructure.rag.qdrant_repository import QdrantVectorRepository
+
+    package_list = [p.strip() for p in packages.split(",") if p.strip()]
+    repo = QdrantVectorRepository(settings.qdrant_url, settings.qdrant_api_key)
+    store = ChunkStore(_CHUNKS_DIR)
+
+    total_upserted = 0
+    for package in package_list:
+        chunks = store.load(package)
+        if not chunks:
+            console.print(f"[yellow]{package}: no chunks found — run `dda kb build` first.[/yellow]")
+            continue
+        repo.upsert(chunks)
+        total_upserted += len(chunks)
+        console.print(f"[green]{package}: upserted {len(chunks)} chunk(s)[/green]")
+
+    console.print(f"\nTotal upserted: {total_upserted}")
+
+
+@kb_app.command("search")
+def search(
+    query: str = typer.Argument(..., help="Search query"),
+    package: str = typer.Option("", "--package", "-p", help="Filter to a specific package"),
+    top_k: int = typer.Option(5, "--top-k", help="Number of results"),
+    dense_only: bool = typer.Option(False, "--dense-only", help="Skip BM25 and reranking"),
+    no_rerank: bool = typer.Option(False, "--no-rerank", help="Skip cross-encoder reranking"),
+) -> None:
+    """Search the migration knowledge base and show ranked results with scores."""
+    settings = Settings()
+    if not settings.qdrant_url:
+        console.print("[red]QDRANT_URL is not set — cannot search.[/red]")
+        raise typer.Exit(code=1)
+
+    # Import heavy deps only when this command runs.
+    from dda.infrastructure.rag.embedder import Embedder
+    from dda.infrastructure.rag.hybrid_retriever import HybridRetriever
+    from dda.infrastructure.rag.qdrant_repository import QdrantVectorRepository
+    from dda.infrastructure.rag.reranker import Reranker
+
+    store = ChunkStore(_CHUNKS_DIR)
+    all_chunks: list[Chunk] = []
+    for chunks in store.load_all().values():
+        all_chunks.extend(chunks)
+
+    pkg_filter = package.strip() if package.strip() else None
+    retriever = HybridRetriever(
+        vector_repository=QdrantVectorRepository(settings.qdrant_url, settings.qdrant_api_key),
+        bm25_retriever=BM25Retriever(all_chunks),
+        embedder=Embedder(),
+        reranker=Reranker(),
+        use_bm25=not dense_only,
+        use_rerank=not dense_only and not no_rerank,
+    )
+
+    results = retriever.retrieve(query, pkg_filter, top_k)
+
+    if not results:
+        console.print("[yellow]No results found.[/yellow]")
+        return
+
+    for i, chunk in enumerate(results, 1):
+        panel_title = f"[bold]#{i}[/bold]  {chunk.package} · {chunk.doc_type}  [{chunk.chunk_id}]"
+        header = f"[dim]{chunk.header_path}[/dim]"
+        body = chunk.text[:500] + ("…" if len(chunk.text) > 500 else "")
+        console.print(Panel(f"{header}\n\n{body}", title=panel_title, expand=False))

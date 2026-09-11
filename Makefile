@@ -14,10 +14,11 @@ typecheck:
 	mypy src
 
 run-api:
-	uvicorn dda.infrastructure.api:app --reload
+	uvicorn dda.api.app:app --reload
 
 run-ui:
 	streamlit run src/dda/infrastructure/ui.py
 
 eval:
 	pytest tests/eval
+	python evals/run_eval.py --limit 5 --variants 1,2

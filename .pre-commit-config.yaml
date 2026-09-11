@@ -16,7 +16,7 @@ repos:
         pass_filenames: false
 
       - id: max-file-lines
-        name: enforce 300-line file limit (CLAUDE.md Architecture Rules)
+        name: enforce 300-line file limit (Architecture Rules)
         entry: python scripts/check_file_length.py
         language: system
         files: ^src/.*\.py$

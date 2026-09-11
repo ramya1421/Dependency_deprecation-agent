@@ -1,4 +1,6 @@
 import asyncio
+import asyncio
+import json
 import sqlite3
 import uuid
 from pathlib import Path
@@ -6,6 +8,7 @@ from typing import Protocol
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from dda.application.services.parser_registry import ParserRegistry
@@ -188,6 +191,128 @@ def usage(
         f"[dim]{confirmed} confirmed, {possible} possible call site(s) — "
         "a lower bound, not exhaustive.[/dim]"
     )
+
+
+@app.command()
+def migrate(
+    repo_path: str = typer.Argument(..., help="Local repo path to analyse"),
+    package: str = typer.Option(..., "--package", help="Package to generate a migration plan for"),
+    ecosystem: str = typer.Option("python", "--ecosystem", help="python or javascript"),
+    trace: bool = typer.Option(False, "--trace", help="Print node-by-node execution path"),
+) -> None:
+    """Run the migration agent and print a cited migration plan."""
+    settings = Settings()
+    if not settings.gemini_api_key and not settings.groq_api_key:
+        console.print("[red]Set GEMINI_API_KEY or GROQ_API_KEY in .env first.[/red]")
+        raise typer.Exit(code=1)
+    if not settings.qdrant_url:
+        console.print("[red]Set QDRANT_URL in .env — needed for KB search.[/red]")
+        raise typer.Exit(code=1)
+
+    asyncio.run(_run_migrate(repo_path, package, ecosystem, trace, settings))
+
+
+async def _run_migrate(
+    repo_path: str, package: str, ecosystem: str, trace: bool, settings: Settings
+) -> None:
+    # Import heavy deps only when migrate is called.
+    from dda.agent.graph import run_migration_agent
+    from dda.agent.tools.registry import AgentToolRegistry
+    from dda.infrastructure.analyzers.python_ast_analyzer import PythonAstAnalyzer
+    from dda.infrastructure.analyzers.tree_sitter_js_analyzer import TreeSitterJsAnalyzer
+    from dda.infrastructure.llm.fallback_client import FallbackLLMClient
+    from dda.infrastructure.llm.gemini_client import GeminiClient
+    from dda.infrastructure.llm.groq_client import GroqClient
+    from dda.infrastructure.rag.bm25_retriever import BM25Retriever
+    from dda.infrastructure.rag.chunk_store import ChunkStore
+    from dda.infrastructure.rag.embedder import Embedder
+    from dda.infrastructure.rag.hybrid_retriever import HybridRetriever
+    from dda.infrastructure.rag.qdrant_repository import QdrantVectorRepository
+    from dda.infrastructure.rag.reranker import Reranker
+
+    connection = _connection(settings)
+
+    # Build LLM clients: Gemini primary, Groq fallback, Groq as independent judge.
+    gemini = GeminiClient(settings.gemini_api_key or "", connection) if settings.gemini_api_key else None
+    groq = GroqClient(settings.groq_api_key or "", connection) if settings.groq_api_key else None
+    if gemini and groq:
+        llm = FallbackLLMClient(gemini, groq)
+        judge_llm = groq  # different model judges the generator's output
+    elif gemini:
+        llm = gemini
+        judge_llm = gemini
+    elif groq:
+        llm = groq
+        judge_llm = groq
+    else:
+        console.print("[red]No LLM provider configured.[/red]")
+        raise typer.Exit(code=1)
+
+    # Build retriever over locally loaded chunks + Qdrant.
+    store = ChunkStore(Path("data/kb/chunks"))
+    all_chunks = [c for chunks in store.load_all().values() for c in chunks]
+    retriever = HybridRetriever(
+        vector_repository=QdrantVectorRepository(settings.qdrant_url or "", settings.qdrant_api_key),
+        bm25_retriever=BM25Retriever(all_chunks),
+        embedder=Embedder(),
+        reranker=Reranker(),
+    )
+
+    async with BaseHttpClient(connection, correlation_id=str(uuid.uuid4())) as http_client:
+        tools = AgentToolRegistry(
+            pypi_client=PyPIClient(http_client),
+            npm_client=NpmClient(http_client),
+            osv_client=OsvClient(http_client),
+            eol_client=EolClient(http_client),
+            github_client=GitHubClient(http_client, token=settings.github_token),
+            retriever=retriever,
+            usage_analyzers=[PythonAstAnalyzer(), TreeSitterJsAnalyzer()],
+            repo_root=Path(repo_path),
+        )
+
+        console.print(f"[bold]Running migration agent for [cyan]{package}[/cyan]…[/bold]")
+        final_state = await run_migration_agent(
+            package=package,
+            ecosystem=ecosystem,
+            repo_root=repo_path,
+            signals_summary="",
+            llm=llm,
+            judge_llm=judge_llm,
+            tools=tools,
+            connection=connection,
+        )
+
+    if trace:
+        console.print("\n[dim]Execution path:[/dim]")
+        for step in final_state.get("route_history", []):
+            console.print(f"  [dim]→ {step}[/dim]")
+
+    plan = final_state.get("migration_plan")
+    if not plan:
+        console.print("[yellow]No migration plan produced.[/yellow]")
+        return
+
+    console.print(Panel(plan["summary"], title=f"Migration plan: {package}", expand=False))
+
+    table = Table(title="Steps", show_header=False, show_lines=True)
+    table.add_column("", style="dim", width=3)
+    table.add_column("")
+    for i, step in enumerate(plan.get("steps", []), 1):
+        table.add_row(str(i), step)
+    console.print(table)
+
+    claims = plan.get("claims", [])
+    if claims:
+        console.print(f"\n[dim]{len(claims)} verified citation(s):[/dim]")
+        for claim in claims:
+            score = claim.get("entailment_score") or 0.0
+            console.print(
+                f"  [{claim['chunk_id']}] score={score:.2f}  {str(claim['text'])[:80]}"
+            )
+
+    effort = plan.get("effort", "unknown")
+    sites = plan.get("usage_site_count", 0)
+    console.print(f"\n[dim]Effort estimate: [bold]{effort}[/bold] · {sites} call site(s)[/dim]")
 
 
 def main() -> None:

@@ -1,0 +1,60 @@
+version: "3.9"
+
+# Local development stack: API + Streamlit UI running together.
+# Both containers share the same SQLite database file and KB data
+# via named volumes so a scan triggered from the UI is visible in the API.
+#
+# Usage:
+#   cp .env.example .env   # fill in API keys
+#   docker compose up --build
+
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    image: dda-api:local
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - dda-data:/app/data
+      - dda-db:/app/db
+    environment:
+      DATABASE_PATH: /app/db/dda.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: .
+      target: runtime
+    image: dda-ui:local
+    env_file: .env
+    ports:
+      - "8501:8501"
+    volumes:
+      - dda-data:/app/data
+      - dda-db:/app/db
+    environment:
+      DATABASE_PATH: /app/db/dda.db
+    command:
+      - streamlit
+      - run
+      - src/dda/infrastructure/ui.py
+      - --server.port=8501
+      - --server.address=0.0.0.0
+      - --server.headless=true
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  dda-data:
+  dda-db:

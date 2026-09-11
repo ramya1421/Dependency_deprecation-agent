@@ -1,0 +1,16 @@
+You are evaluating whether retrieved context is sufficient to answer a migration sub-question.
+
+Sub-question: {sub_question}
+
+Retrieved context:
+{context}
+
+Score the sufficiency of this context against the following rubric:
+1. Does the context directly address the sub-question? (not just mention the package name)
+2. Does it contain actionable migration steps or code examples?
+3. Does it cover the specific API symbols mentioned in the sub-question?
+
+Respond with a JSON object matching this schema:
+{schema}
+
+If not sufficient, identify what specific information is missing and provide a reformulated query that would retrieve it.

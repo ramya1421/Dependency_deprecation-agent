@@ -1,0 +1,46 @@
+# Version control
+.git
+.gitignore
+
+# Python caches
+__pycache__
+*.py[cod]
+*.pyo
+.mypy_cache
+.ruff_cache
+.pytest_cache
+
+# Virtual environments
+.venv
+venv
+env
+
+# Development-only files
+*.env
+.env
+.env.*
+!.env.example
+
+# Build artefacts
+dist
+build
+*.egg-info
+
+# Runtime data (mounted as volumes, not baked in)
+data/
+*.db
+
+# Test fixtures and evaluation outputs
+tests/
+evals/results*
+evals/*.json
+evals/*.csv
+
+# IDE / OS
+.idea
+.vscode
+*.DS_Store
+Thumbs.db
+
+# CI
+.github
