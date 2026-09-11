@@ -1,8 +1,12 @@
 # Render Blueprint — deploy with: Dashboard → New → Blueprint → connect repo
 #
-# Requires these secrets in Render (set in Dashboard or via sync: false vars):
+# Deployed services:
+#   API: https://dda-api-cy9o.onrender.com
+#   UI:  https://dda-ui.onrender.com
+#
+# Requires these secrets set in Render Dashboard → Environment:
 #   GEMINI_API_KEY, GROQ_API_KEY, QDRANT_URL, QDRANT_API_KEY
-# Optional: GITHUB_TOKEN (raises GitHub API rate limit)
+# Optional: GITHUB_TOKEN (raises GitHub API rate limit 60→5000 req/hr)
 
 services:
   - type: web
@@ -28,7 +32,6 @@ services:
         sync: false
       - key: GITHUB_TOKEN
         sync: false
-    
 
   - type: web
     name: dda-ui
@@ -44,10 +47,7 @@ services:
       --server.headless=true
     envVars:
       - key: DDA_API_URL
-        fromService:
-          type: web
-          name: dda-api
-          property: host
+        value: https://dda-api-cy9o.onrender.com
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY

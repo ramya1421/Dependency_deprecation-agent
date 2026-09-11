@@ -1,26 +1,37 @@
 """Thin HTTP client for the Streamlit UI to talk to the FastAPI backend.
 
 All pages import from here — no page imports httpx directly.
+
+Set DDA_API_URL to point at your deployed API, e.g.:
+  DDA_API_URL=https://your-api.onrender.com
+
+Falls back to http://localhost:8000 for local development.
 """
 import os
 from typing import Any
 
 import httpx
 
-def _api_base() -> str:
-    raw = os.environ.get("DDA_API_URL", "http://localhost:8000").strip().rstrip("/")
+_TIMEOUT = 30.0
+
+
+def get_api_base() -> str:
+    """Read the API base URL from the environment.
+
+    Checks (in order):
+      1. DDA_API_URL env var  — set as Render environment variable
+      2. https://dda-api-cy9o.onrender.com — production default
+      3. http://localhost:8000 — local development fallback
+    """
+    raw = os.environ.get("DDA_API_URL", "https://dda-api-cy9o.onrender.com").strip().rstrip("/")
     if raw and not raw.startswith(("http://", "https://")):
         return f"https://{raw}"
-    return raw
-
-
-_BASE = _api_base()
-_TIMEOUT = 30.0
+    return raw or "https://dda-api-cy9o.onrender.com"
 
 
 def _get(path: str) -> dict[str, Any] | list[Any] | None:
     try:
-        r = httpx.get(f"{_BASE}{path}", timeout=_TIMEOUT)
+        r = httpx.get(f"{get_api_base()}{path}", timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json()  # type: ignore[no-any-return]
     except Exception:
@@ -29,7 +40,7 @@ def _get(path: str) -> dict[str, Any] | list[Any] | None:
 
 def _post(path: str, body: dict[str, Any]) -> dict[str, Any] | None:
     try:
-        r = httpx.post(f"{_BASE}{path}", json=body, timeout=_TIMEOUT)
+        r = httpx.post(f"{get_api_base()}{path}", json=body, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json()  # type: ignore[no-any-return]
     except Exception:

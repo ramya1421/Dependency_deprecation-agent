@@ -16,13 +16,6 @@
 
 <br/>
 
-> A full-stack agentic RAG system that scans a Git repository's dependencies,  
-> identifies deprecated / vulnerable / abandoned / EOL packages,  
-> analyses exactly which APIs your code calls, and generates  
-> **cited, call-site-grounded migration plans** using a LangGraph agent.
-
-<br/>
-
 </div>
 
 ---

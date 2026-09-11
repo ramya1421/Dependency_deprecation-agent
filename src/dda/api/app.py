@@ -2,7 +2,7 @@ import logging
 import uuid
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from dda.api.routes.health import router as health_router
 from dda.api.routes.kb import router as kb_router
@@ -24,6 +24,12 @@ def create_app() -> FastAPI:
     app.include_router(scans_router)
     app.include_router(kb_router)
     app.include_router(health_router)
+
+    @app.get("/", include_in_schema=False)
+    async def root() -> RedirectResponse:
+        # Redirect bare root hits to the interactive API docs so visiting
+        # https://dda-api-cy9o.onrender.com/ shows something useful.
+        return RedirectResponse(url="/docs")
 
     @app.middleware("http")
     async def correlation_id_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]
