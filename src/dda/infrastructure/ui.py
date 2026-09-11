@@ -40,10 +40,15 @@ with st.sidebar:
     is_local = api_url.startswith("http://localhost")
 
     h = api_client.health()
-    api_ok = h.get("status") == "ok"
+    api_ok = h.get("status") in ("ok", "degraded")
 
     if api_ok:
-        st.success(f"API online")
+        if h.get("status") == "ok":
+            st.success("API online")
+        else:
+            st.warning("API online (degraded)")
+            if h.get("qdrant", "").startswith("error"):
+                st.caption("⚠️ Qdrant: check QDRANT_URL / QDRANT_API_KEY")
         st.caption(f"`{api_url}`")
     else:
         st.error("API unreachable")

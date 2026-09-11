@@ -13,7 +13,9 @@ def render() -> None:
     # Streamlit re-runs the whole script on every interaction, so this check
     # runs on every page load and immediately tells the user what to fix.
     h = api_client.health()
-    api_up = h.get("status") == "ok"
+    # "degraded" means the API is up but a downstream service (Qdrant, LLM)
+    # is misconfigured. Still show the UI — only "unreachable" means no API.
+    api_up = h.get("status") in ("ok", "degraded")
 
     if not api_up:
         api_url = api_client.get_api_base()
