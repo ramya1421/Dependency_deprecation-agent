@@ -37,7 +37,9 @@ PYEOF
 FROM python:3.11-slim AS runtime
 
 # Non-root user for container security.
-RUN groupadd --gid 1001 dda && useradd --uid 1001 --gid dda --no-create-home dda
+# --create-home ensures /home/dda exists so Streamlit can write its
+# metrics cache to /home/dda/.streamlit without a PermissionError.
+RUN groupadd --gid 1001 dda && useradd --uid 1001 --gid dda --create-home dda
 
 WORKDIR /app
 
@@ -50,10 +52,16 @@ COPY --from=builder /root/.cache/huggingface /home/dda/.cache/huggingface
 COPY src/ ./src/
 COPY evals/ ./evals/
 COPY scripts/ ./scripts/
+# Streamlit config — disables usage stats so it never tries to write
+# machine-id files before /home/dda/.streamlit permissions are set.
+COPY .streamlit/ /home/dda/.streamlit/
 
 # Runtime data directories (mounted as volumes in production).
+# Create /home/dda/.streamlit explicitly so Streamlit's metrics util
+# doesn't race to create it and hit a permission error on first request.
 RUN mkdir -p data/kb/raw data/kb/chunks \
- && chown -R dda:dda /app /home/dda/.cache
+ && mkdir -p /home/dda/.streamlit \
+ && chown -R dda:dda /app /home/dda
 
 USER dda
 

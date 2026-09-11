@@ -1,0 +1,14 @@
+[global]
+# Disable usage stats collection so Streamlit doesn't try to write
+# machine-id files to /home/dda/.streamlit on first boot in Docker.
+dataFrameSerialization = "arrow"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+# Render sets $PORT dynamically; headless=true suppresses the browser-open
+# attempt that would fail in a containerised environment.
+headless = true
+enableCORS = false
+enableXsrfProtection = false
